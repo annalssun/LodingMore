@@ -122,6 +122,7 @@ public class MDPullToRefresh extends FrameLayout {
                         mOffsetY = mDecelerateInterpolator.getInterpolation(dy / mWaveHeight / 2) * dy / 2;
                         mHeaderView.getLayoutParams().height = isRefreshing ? (int) mOffsetY + mHeaderHeight : (int) mOffsetY;
                         mChildView.setTranslationY(isRefreshing ? (int) mOffsetY + mHeaderHeight : (int) mOffsetY);
+                        mHeaderView.startAnimation();
                         mHeaderView.requestLayout();
                     } else if (dy < 0) {
                         float loadMoreDy = -dy;

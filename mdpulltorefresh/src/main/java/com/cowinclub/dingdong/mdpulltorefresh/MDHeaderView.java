@@ -6,11 +6,10 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.Gravity;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.TextView;
 
 public class MDHeaderView extends FrameLayout {
+
     public MDHeaderView(@NonNull Context context) {
         super(context);
     }
@@ -27,21 +26,18 @@ public class MDHeaderView extends FrameLayout {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
-        TextView textView = new TextView(getContext());
-        textView.setText("下拉刷新");
-        textView.setBackgroundColor(Color.BLACK);
-        textView.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams layoutParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        FrameLayout.LayoutParams layoutParams = new LayoutParams(Util.dip2px(getContext(),100), Util.dip2px(getContext(),20));
         layoutParams.gravity = Gravity.CENTER;
-        addView(textView, layoutParams);
+//        addView(progressBar, layoutParams);
         setBackgroundColor(Color.TRANSPARENT);
     }
 
-    public void startAnimation(){
+    public void startAnimation() {
 
     }
 
-    public void endAnimation(){
+    public void endAnimation() {
 
     }
 }
