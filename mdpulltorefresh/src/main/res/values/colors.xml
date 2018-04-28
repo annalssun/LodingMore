@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--toolBar-->
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="colorTitle">#FFFFFF</color>
+    <color name="windowBackGround">#FFFFFF</color>
+
+    <color name="ared">#00ff0000</color>
+    <color name="ablack">#66000000</color>
+
+
+
+</resources>
