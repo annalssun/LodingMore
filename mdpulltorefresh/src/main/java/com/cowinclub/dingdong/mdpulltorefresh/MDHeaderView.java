@@ -22,19 +22,22 @@ public class MDHeaderView extends FrameLayout {
         super(context, attrs, defStyleAttr);
     }
 
+    CicleAnimationView mCicleAnimationView;
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
 
-        FrameLayout.LayoutParams layoutParams = new LayoutParams(Util.dip2px(getContext(),100), Util.dip2px(getContext(),20));
+        mCicleAnimationView = new CicleAnimationView(getContext());
+        FrameLayout.LayoutParams layoutParams = new LayoutParams(Util.dip2px(getContext(), 100), Util.dip2px(getContext(), 50));
         layoutParams.gravity = Gravity.CENTER;
-//        addView(progressBar, layoutParams);
+        addView(mCicleAnimationView, layoutParams);
         setBackgroundColor(Color.TRANSPARENT);
     }
 
     public void startAnimation() {
-
+        mCicleAnimationView.startAnimation();
     }
 
     public void endAnimation() {

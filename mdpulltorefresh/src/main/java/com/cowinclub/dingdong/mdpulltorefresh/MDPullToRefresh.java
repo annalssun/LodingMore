@@ -143,6 +143,7 @@ public class MDPullToRefresh extends FrameLayout {
                     if (actionUpDy > 0) {
                         actionUpDy = isRefreshing ? mCurrentY - mTouchY + mHeaderHeight : mCurrentY - mTouchY;
                         if (actionUpDy >= mHeaderHeight) {
+                            mHeaderView.startAnimation();
                             createAnimationTranslationY(mOffsetY, mHeaderHeight, mChildView, mHeaderView);
                             isRefreshing = true;
                         } else {
