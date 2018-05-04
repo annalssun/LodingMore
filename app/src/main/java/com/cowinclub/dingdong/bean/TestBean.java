@@ -1,15 +1,27 @@
 package com.cowinclub.dingdong.bean;
 
+import java.util.List;
+
 public class TestBean {
+    private String code;
+    private String msg;
+    private List<Data> data;
 
-    private String text; //标题
-    private String profile_image;//图标
 
-    public String getText() {
-        return text != null ? text : "";
+    public String getCode() {
+        return code;
     }
 
-    public String getProfile_image() {
-        return profile_image != null ? profile_image : "";
+    public String getMsg() {
+        return msg;
+    }
+
+    public List<Data> getData() {
+        return data;
+    }
+
+    public static class Data {
+        public String text;
+        public String profile_image;
     }
 }

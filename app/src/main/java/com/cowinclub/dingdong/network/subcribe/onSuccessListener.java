@@ -6,6 +6,5 @@ package com.cowinclub.dingdong.network.subcribe;
 
 public interface onSuccessListener<T> {
     void onSeccess(T t);
-
     void onFailed(int code, String message);
 }

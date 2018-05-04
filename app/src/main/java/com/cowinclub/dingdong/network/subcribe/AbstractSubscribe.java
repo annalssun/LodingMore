@@ -5,13 +5,14 @@ import android.content.Context;
 import com.cowinclub.dingdong.BuildConfig;
 import com.cowinclub.dingdong.network.exception.ApiException;
 
-import rx.Subscriber;
+import io.reactivex.subscribers.DisposableSubscriber;
+
 
 /**
  * Created by Administrator on 2018-03-27.
  */
 
-public class AbstractSubscribe<T> extends Subscriber<T> {
+public class AbstractSubscribe<T> extends DisposableSubscriber<T> {
 
     private Context mContext;
 
@@ -19,10 +20,6 @@ public class AbstractSubscribe<T> extends Subscriber<T> {
         this.mContext = context;
     }
 
-    @Override
-    public void onCompleted() {
-
-    }
 
     @Override
     public void onError(Throwable e) {
@@ -37,9 +34,16 @@ public class AbstractSubscribe<T> extends Subscriber<T> {
     }
 
     @Override
+    public void onComplete() {
+
+    }
+
+    @Override
     public void onNext(T t) {
 
     }
+
+
 
     /**
      * 处理AP异常
@@ -47,4 +51,5 @@ public class AbstractSubscribe<T> extends Subscriber<T> {
     public void processApiException() {
 
     }
+
 }
