@@ -3,13 +3,22 @@ package com.cowinclub.dingdong.lru.recyclelru;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Environment;
 
+import com.cowinclub.dingdong.common.util.GsonFactory;
 import com.jakewharton.disklrucache.DiskLruCache;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -21,14 +30,18 @@ public class DiskLruCacheManage {
     //    private Context context;
     private DiskLruCache mDiskLruCache;
 
-    public DiskLruCacheManage(Context context) {
-        openDiskCache(context);
+    /**
+     * @param context
+     * @param name    缓存路径的名字
+     */
+    public DiskLruCacheManage(Context context, String name) {
+        openDiskCache(context, name);
     }
 
 
-    private void openDiskCache(Context context) {
+    private void openDiskCache(Context context, String name) {
         try {
-            File cacheDir = getDiskCacheDir(context, "picture");
+            File cacheDir = getDiskCacheDir(context, name);
             if (!cacheDir.exists()) {
                 cacheDir.mkdir();
             }
@@ -69,8 +82,8 @@ public class DiskLruCacheManage {
 
     /**
      * 将数据存储到硬盘之中
-     * */
-    public void saveData(String url) {
+     */
+    public void savePicture(String url) {
         String key = hashKeyForDisk(url);
         try {
             DiskLruCache.Editor editor = mDiskLruCache.edit(key);
@@ -110,5 +123,70 @@ public class DiskLruCacheManage {
             sb.append(hex);
         }
         return sb.toString();
+    }
+
+    public  <T> void saveDataToDisk(T t, Class calss, String key) {
+        String jsonStr = GsonFactory.getInstance().toJson(t, calss);
+        DiskLruCache.Editor editor;
+        try {
+            editor = mDiskLruCache.edit(key);
+            if (editor != null) {
+                OutputStream outputStream = editor.newOutputStream(0);
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(outputStream));
+                bw.write(jsonStr);
+                editor.commit();
+                mDiskLruCache.flush();
+                bw.close();
+            }
+            mDiskLruCache.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Bitmap getPictureFromDisk(String url) {
+        String key = hashKeyForDisk(url);
+        DiskLruCache.Snapshot snapshot = null;
+        try {
+            snapshot = mDiskLruCache.get(key);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (snapshot != null) {
+            InputStream inputStream = snapshot.getInputStream(0);
+            return BitmapFactory.decodeStream(inputStream);
+        }
+        return null;
+    }
+
+    public <T> T getDataFromDisk(String key, Class calss) {
+        DiskLruCache.Snapshot snapshot = null;
+        InputStreamReader reader = null;
+        try {
+            snapshot = mDiskLruCache.get(key);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            if (snapshot != null) {
+                StringWriter writer = new StringWriter();
+                InputStream inputStream = snapshot.getInputStream(0);
+                reader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
+                char[] buffer = new char[1024];
+                int count;
+                while ((count = reader.read(buffer)) != -1) {
+                    writer.write(buffer, 0, count);
+                }
+                String jsonStr = writer.toString();
+                writer.close();
+                reader.close();
+                return (T) GsonFactory.getInstance().fromJson(jsonStr, calss);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

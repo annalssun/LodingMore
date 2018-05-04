@@ -18,8 +18,6 @@ public interface IRecycleData<T> {
     //设置总数目
     void setItemCount(int count);
 
-    //获取列表数据
-    T get(int position);
 
     //回收内存
     void recycle();
