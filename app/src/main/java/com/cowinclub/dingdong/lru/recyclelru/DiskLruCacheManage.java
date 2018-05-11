@@ -1,5 +1,6 @@
 package com.cowinclub.dingdong.lru.recyclelru;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -8,6 +9,7 @@ import android.graphics.BitmapFactory;
 import android.os.Environment;
 
 import com.cowinclub.dingdong.common.util.GsonFactory;
+import com.cowinclub.dingdong.mdpulltorefresh.MyLog;
 import com.jakewharton.disklrucache.DiskLruCache;
 
 import java.io.BufferedWriter;
@@ -22,6 +24,11 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import io.reactivex.Observable;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
+
 
 public class DiskLruCacheManage {
 
@@ -30,16 +37,21 @@ public class DiskLruCacheManage {
     //    private Context context;
     private DiskLruCache mDiskLruCache;
 
+    private Context context;
+    private String name;
+
     /**
      * @param context
      * @param name    缓存路径的名字
      */
     public DiskLruCacheManage(Context context, String name) {
-        openDiskCache(context, name);
+        this.context= context;
+        this.name = name;
+        openDiskCache();
     }
 
 
-    private void openDiskCache(Context context, String name) {
+    private void openDiskCache() {
         try {
             File cacheDir = getDiskCacheDir(context, name);
             if (!cacheDir.exists()) {
@@ -125,23 +137,43 @@ public class DiskLruCacheManage {
         return sb.toString();
     }
 
-    public  <T> void saveDataToDisk(T t, Class calss, String key) {
-        String jsonStr = GsonFactory.getInstance().toJson(t, calss);
-        DiskLruCache.Editor editor;
-        try {
-            editor = mDiskLruCache.edit(key);
-            if (editor != null) {
-                OutputStream outputStream = editor.newOutputStream(0);
-                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(outputStream));
-                bw.write(jsonStr);
-                editor.commit();
-                mDiskLruCache.flush();
-                bw.close();
-            }
-            mDiskLruCache.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    @SuppressLint("CheckResult")
+    public  <T> void saveDataToDisk(T t, Class calss, final String key) {
+        final String jsonStr = GsonFactory.getInstance().toJson(t, calss);
+
+            Observable.empty()
+                    .subscribeOn(Schedulers.io())
+                    .subscribe(new Consumer<Object>() {
+                        @Override
+                        public void accept(Object o) throws Exception {
+                            MyLog.i("*****************************1");
+                        }
+                    }, new Consumer<Throwable>() {
+                        @Override
+                        public void accept(Throwable throwable) throws Exception {
+                            MyLog.i("*****************************2");
+                        }
+                    }, new Action() {
+                        @Override
+                        public void run() throws Exception {
+                            DiskLruCache.Editor editor;
+                            if (mDiskLruCache.isClosed()){
+                                openDiskCache();
+                            }
+                            editor = mDiskLruCache.edit(key);
+                            if (editor != null) {
+                                OutputStream outputStream = editor.newOutputStream(0);
+                                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(outputStream));
+                                bw.write(jsonStr);
+                                editor.commit();
+                                mDiskLruCache.flush();
+                                bw.close();
+                                mDiskLruCache.flush();
+                        }
+                    }});
+
+
+
     }
 
     public Bitmap getPictureFromDisk(String url) {
@@ -189,4 +221,14 @@ public class DiskLruCacheManage {
         }
         return null;
     }
+
+
+    public void clear(){
+        try {
+            mDiskLruCache.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

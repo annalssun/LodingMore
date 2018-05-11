@@ -33,6 +33,7 @@ public class MDHeaderView extends FrameLayout {
         FrameLayout.LayoutParams layoutParams = new LayoutParams(Util.dip2px(getContext(), 100), Util.dip2px(getContext(), 50));
         layoutParams.gravity = Gravity.CENTER;
         addView(mCicleAnimationView, layoutParams);
+        mCicleAnimationView.setVisibility(VISIBLE);
         setBackgroundColor(Color.TRANSPARENT);
     }
 
@@ -41,6 +42,7 @@ public class MDHeaderView extends FrameLayout {
     }
 
     public void endAnimation() {
-
+//        mCicleAnimationView.setVisibility(GONE);
+        mCicleAnimationView.endAnimation();
     }
 }

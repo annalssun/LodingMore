@@ -37,10 +37,20 @@ public class CicleAnimationView extends FrameLayout {
         addView(view, params);
     }
 
+    ObjectAnimator animator;
+
     public void startAnimation() {
-        ObjectAnimator animator = ObjectAnimator.ofFloat(cicleView, "rotation", 0f, 1080f);
+        setVisibility(VISIBLE);
+        animator = ObjectAnimator.ofFloat(cicleView, "rotation", 0f, 1080f);
         animator.setDuration(2000);
         animator.setRepeatCount(10000);
         animator.start();
+    }
+
+    public void endAnimation() {
+        setVisibility(GONE);
+        if (animator != null) {
+            animator.cancel();
+        }
     }
 }

@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.util.LruCache;
 
 import com.cowinclub.dingdong.bean.TestBean;
+import com.cowinclub.dingdong.mdpulltorefresh.MyLog;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -15,31 +16,34 @@ public class LruRecycleData implements IRecycleData {
 
     int BITMAP_MAXSIZE = 8;
     int DATA_MAXSIZE = 30;
-    //数据缓存
-    private LruCache<String, TestBean> dataCache = null;
+    int mPage = 30;
+
+    private LruCache<Integer, TestBean.Data> testBeanDataCache = null;
     //图片缓存
     private LruCache<String, Bitmap> pictureCache = null;
 
 
-    private int count;
+    private int mItemCount;
     private UIUpdateCallBack callBack;
     private ExecutorService executorService = Executors.newSingleThreadExecutor();
     private DiskLruCacheManage diskLruCacheManage;
 
     public LruRecycleData(Context context, String specialName, UIUpdateCallBack callBack) {
-        dataCache = new LruCache<>(DATA_MAXSIZE);
+        mItemCount = 0;
         pictureCache = new LruCache<>(BITMAP_MAXSIZE);
+        testBeanDataCache = new LruCache<>(DATA_MAXSIZE);
         diskLruCacheManage = new DiskLruCacheManage(context, specialName);
+        this.callBack = callBack;
     }
 
     @Override
     public void onBindViewHolder(int position) {
-
+        loadDataToCache(position);
     }
 
     @Override
     public void onViewAttachedToWindow(int position) {
-
+        loadDataToCache(position);
     }
 
     @Override
@@ -54,7 +58,7 @@ public class LruRecycleData implements IRecycleData {
 
     @Override
     public int getItemCount() {
-        return 0;
+        return mItemCount;
     }
 
     @Override
@@ -62,8 +66,8 @@ public class LruRecycleData implements IRecycleData {
 
     }
 
-    public TestBean get(int position) {
-        return null;
+    public TestBean.Data get(int position) {
+        return testBeanDataCache.get(position);
     }
 
     @Override
@@ -71,39 +75,77 @@ public class LruRecycleData implements IRecycleData {
 
     }
 
-    public Bitmap getBitmap(String url) {
-        String key = hashKeyForDisk(url);
-        Bitmap bitmap = pictureCache.get(key);
-        if (bitmap == null) {
-            bitmap = diskLruCacheManage.getPictureFromDisk(url);
-            if (bitmap != null) {
-                pictureCache.put(key, bitmap);
+    public void loadBitmap(final String url) {
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                String key = hashKeyForDisk(url);
+                Bitmap bitmap = pictureCache.get(key);
+                if (bitmap == null) {
+                    bitmap = diskLruCacheManage.getPictureFromDisk(url);
+                    if (bitmap != null) {
+                        pictureCache.put(key, bitmap);
+                    }
+                }
             }
-        }
-        return bitmap;
+        });
     }
 
-    public TestBean getData(String page) {
-        TestBean testBean = dataCache.get(page);
-        if (testBean == null) {
-            testBean = diskLruCacheManage.getDataFromDisk(page, TestBean.class);
-            if (testBean != null) {
-                dataCache.put(page, testBean);
+
+    public void saveDataToCache(final TestBean bean, final int page) {
+        MyLog.i("***************************进来");
+        if (testBeanDataCache == null || bean == null) return;
+
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                if (page == 1) {
+                    mItemCount = 0;
+                    testBeanDataCache.evictAll();
+                    MyLog.i("数量***********1****************" + testBeanDataCache.putCount());
+                    MyLog.i("数量***********2****************" + testBeanDataCache.createCount());
+                    diskLruCacheManage.clear();
+                }
+                int cacheLength = mItemCount;
+                int size = bean.getData().size();
+                mPage = size == 0 ? 30 : bean.getData().size();
+                for (int i = 0; i < size; i++) {
+                    testBeanDataCache.put(cacheLength + i, bean.getData().get(i));
+                    mItemCount = mItemCount + 1;
+                }
+                diskLruCacheManage.saveDataToDisk(bean, TestBean.class, page + "");
+                if (page == 1) {
+                    callBack.updataposition(0, 0);
+                } else {
+                    callBack.updataposition(cacheLength-2, size+2);
+                }
+
             }
-        }
-        return testBean;
+        });
     }
 
-    public void saveData(TestBean bean, int page) {
-        if (bean == null) return;
-        diskLruCacheManage.saveDataToDisk(bean, TestBean.class, page + "");
-        dataCache.put(page + "", bean);
-        for (TestBean.Data data : bean.getData()) {
-            diskLruCacheManage.savePicture(data.profile_image);
-        }
+
+    public void loadDataToCache(final int pos) {
+        if (testBeanDataCache.get(pos) != null) return;
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                int currentPage = pos / mPage + 1;
+                TestBean bean = diskLruCacheManage.getDataFromDisk(currentPage + "", TestBean.class);
+                if (bean != null) { //已经缓存到本地
+                    int startPos = currentPage == 1 ? 0 : (currentPage - 1) * mPage - 1; //获取添加的位置
+                    for (int i = startPos; i < startPos + bean.getData().size(); i++) {
+                        testBeanDataCache.put(i, bean.getData().get(i));
+                        mItemCount = mItemCount + 1;
+                    }
+                    callBack.updataposition(pos,mPage);
+                }
+            }
+        });
+
     }
 
-    
+
     private String hashKeyForDisk(String key) {
         String cacheKey;
         try {
@@ -127,4 +169,6 @@ public class LruRecycleData implements IRecycleData {
         }
         return sb.toString();
     }
+
+
 }

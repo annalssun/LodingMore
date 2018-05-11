@@ -1,5 +1,6 @@
 package com.cowinclub.dingdong.mdpulltorefresh;
 
+import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -13,8 +14,8 @@ import android.widget.FrameLayout;
 
 public class MDPullToRefresh extends FrameLayout {
 
-    private final static int DEFAULT_WAVE_HEIGHT = 130;
-    private final static int DEFAULT_HEADER_HEIGHT = 100;
+    private final static int DEFAULT_WAVE_HEIGHT = 80;
+    private final static int DEFAULT_HEADER_HEIGHT = 130;
     private final static int DEFAULT_FOOTER_HEIGHT = 30;
 
     private int mHeaderHeight;
@@ -33,6 +34,10 @@ public class MDPullToRefresh extends FrameLayout {
 
     private boolean isRefreshing = false;
     private boolean isLoadingMore = false;
+
+
+    private OnLoadMoreListener loadMoreListener;
+    private OnRefreshListener refreshListener;
 
     //控制下拉过程中动画效果
     private DecelerateInterpolator mDecelerateInterpolator;
@@ -67,6 +72,7 @@ public class MDPullToRefresh extends FrameLayout {
         Context context = getContext();
 
         mChildView = getChildAt(0);
+        MyLog.i("子View的个数======================" + getChildCount());
         if (null == mChildView) return;
 
         mDecelerateInterpolator = new DecelerateInterpolator(10);
@@ -144,19 +150,25 @@ public class MDPullToRefresh extends FrameLayout {
                         actionUpDy = isRefreshing ? mCurrentY - mTouchY + mHeaderHeight : mCurrentY - mTouchY;
                         if (actionUpDy >= mHeaderHeight) {
                             mHeaderView.startAnimation();
-                            createAnimationTranslationY(mOffsetY, mHeaderHeight, mChildView, mHeaderView);
+                            createAnimationTranslationY(mOffsetY, 0 /*mHeaderHeight*/, mChildView, mHeaderView, 1000);
                             isRefreshing = true;
+                            if (refreshListener != null) {
+                                refreshListener.refreshListener();
+                            }
                         } else {
-                            createAnimationTranslationY(mOffsetY, 0, mChildView, mHeaderView);
+                            createAnimationTranslationY(mOffsetY, 0, mChildView, mHeaderView, 1000);
                         }
                     } else if (actionUpDy < 0) {
                         actionUpDy = isRefreshing ? mCurrentY - mTouchY - mFooterHeight : mCurrentY - mTouchY;
                         actionUpDy = -actionUpDy;
                         if (actionUpDy >= mFooterHeight) {
-                            createAnimationTranslationY(-mOffsetY, -mFooterHeight, mChildView, mFooterView);
+                            createAnimationTranslationY(-mOffsetY, 0 /*-mFooterHeight*/, mChildView, mFooterView, 1000);
                             isLoadingMore = true;
+                            if (loadMoreListener != null) {
+                                loadMoreListener.loadMore();
+                            }
                         } else {
-                            createAnimationTranslationY(-mOffsetY, 0, mChildView, mHeaderView);
+                            createAnimationTranslationY(-mOffsetY, 0, mChildView, mHeaderView, 1000);
                         }
                     } //
                 }
@@ -165,17 +177,53 @@ public class MDPullToRefresh extends FrameLayout {
         return super.onTouchEvent(event);
     }
 
+    private float mAnimationTranslationY;
 
-    private void createAnimationTranslationY(float start, float end, final View view, final FrameLayout frameLayout) {
-        ObjectAnimator animator = ObjectAnimator.ofFloat(view, "translationY", start, end);
-        animator.setDuration(1000);
+    private void createAnimationTranslationY(float start, float end, final View view, final FrameLayout frameLayout, int duration) {
+        frameLayout.setEnabled(false);
+        view.setEnabled(false);
+        final ObjectAnimator animator = ObjectAnimator.ofFloat(view, "translationY", start, end);
+        animator.setDuration(duration);
         animator.setInterpolator(new DecelerateInterpolator());
         animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
+                mAnimationTranslationY = view.getTranslationY();
                 int translationY = (int) view.getTranslationY();
                 frameLayout.getLayoutParams().height = Math.abs(translationY);
                 frameLayout.requestLayout();
+                if ((Math.abs(translationY) <= mHeaderHeight || Math.abs(translationY) <= mFooterHeight)
+                        && (isLoadingMore || isRefreshing)) {
+                    MyLog.i("************取消动画******************************");
+                    animator.cancel();
+                }
+            }
+        });
+        animator.addListener(new Animator.AnimatorListener() { //监听动画开始与结束
+            @Override
+            public void onAnimationStart(Animator animation) {
+                frameLayout.setEnabled(false);
+                view.setEnabled(false);
+                isAnimationEnd = false;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                frameLayout.setEnabled(true);
+                view.setEnabled(true);
+                isAnimationEnd = true;
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                frameLayout.setEnabled(true);
+                view.setEnabled(true);
+                isAnimationEnd = true;
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+
             }
         });
         animator.start();
@@ -183,21 +231,11 @@ public class MDPullToRefresh extends FrameLayout {
 
 
     private boolean canScrollUp() {
-        if (mChildView.canScrollVertically(-1)) {
-            MyLog.i("***************************可以加载更多");
-        } else {
-            MyLog.i("***************************不可以加载更多");
-        }
-        return !mChildView.canScrollVertically(-1);
+        return !mChildView.canScrollVertically(1);
     }
 
     private boolean canScrollDown() {
-        if (mChildView.canScrollVertically(1)) {
-            MyLog.i("***************************下拉刷新");
-        } else {
-            MyLog.i("***************************不可以下拉刷新");
-        }
-        return !mChildView.canScrollVertically(1);
+        return !mChildView.canScrollVertically(-1);
     }
 
     /**
@@ -215,4 +253,31 @@ public class MDPullToRefresh extends FrameLayout {
     }
 
 
+    public void setOnLoadMoreListener(OnLoadMoreListener loadMoreListener) {
+        this.loadMoreListener = loadMoreListener;
+    }
+
+    public void setOnRefreshListener(OnRefreshListener listener) {
+        this.refreshListener = listener;
+    }
+
+    boolean isAnimationEnd = false;
+
+    public void loadSuccess() {
+        isLoadingMore = false;
+        if (isAnimationEnd) {
+            createAnimationTranslationY(mAnimationTranslationY, 0, mChildView, mHeaderView, 100);
+        }
+        mFooterView.setChildVisibility(false);
+        mFooterView.setVisibility(GONE);
+    }
+
+    public void refreshSuccess() {
+        isRefreshing = false;
+        if (isAnimationEnd) {
+            createAnimationTranslationY(mAnimationTranslationY, 0, mChildView, mHeaderView, 100);
+        }
+        mHeaderView.endAnimation();
+        mHeaderView.setVisibility(GONE);
+    }
 }
